@@ -22,7 +22,7 @@
   :root {
     --ciano: #00f0ff;
     /* Ajuste fino: quanto menor o número (alpha), mais transparente */
-    --card-bg: rgba(4, 18, 24, .34);
+    --card-bg: rgba(2, 20, 28, .86);
     --fundo-topo: rgba(0, 18, 24, .10);
     --fundo-base: rgba(0, 18, 24, .40);
   }
@@ -65,16 +65,16 @@
 
   .card {
     background: var(--card-bg);
-    backdrop-filter: blur(1px); -webkit-backdrop-filter: blur(1px);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(0,240,255,.45);
     border-radius: 14px;
     box-shadow: 0 6px 24px rgba(0,0,0,.35);
     text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 8px rgba(0,0,0,.6);
   }
-  .card .text-muted, .card .form-text { color: rgba(255,255,255,.82) !important; }
+  .card .text-muted, .card .form-text { color: rgba(255,255,255,.9) !important; }
   .card .btn, .card .form-control { text-shadow: none; }
   .form-control, .form-control:focus {
-    background: rgba(0,0,0,.40); color: #fff; border-color: rgba(0,240,255,.45);
+    background: rgba(0,0,0,.55); color: #fff; border-color: rgba(0,240,255,.55);
   }
   .form-control:focus { box-shadow: 0 0 0 .2rem rgba(0,240,255,.2); }
   .form-control::placeholder { color: rgba(255,255,255,.45); }
@@ -86,11 +86,11 @@
 
   .revelado {
     text-align: center; padding: 1rem; border-radius: 12px;
-    background: rgba(0,0,0,.28); border: 1px solid rgba(0,240,255,.45);
+    background: rgba(0,0,0,.45); border: 1px solid rgba(0,240,255,.45);
   }
   .desejo-texto {
     white-space: pre-wrap; overflow-wrap: anywhere; padding: .6rem .8rem; border-radius: 10px;
-    background: rgba(0,0,0,.30); border: 1px solid rgba(0,240,255,.3);
+    background: rgba(0,0,0,.45); border: 1px solid rgba(0,240,255,.3);
   }
   .desejo-texto a, .revelado a { color: #5ff6ff; text-decoration: underline; overflow-wrap: anywhere; }
   .dica-link {
