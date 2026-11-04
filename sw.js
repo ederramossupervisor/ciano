@@ -1,4 +1,4 @@
-const CACHE = 'ciano-v1';
+const CACHE = 'ciano-v2';
 const ARQUIVOS = [
   './', './index.html', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
