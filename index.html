@@ -37,6 +37,28 @@
       url('img/fundo.jpg') center / cover no-repeat;
   }
 
+  /* Telas em pé (celular): mostra a foto inteira, na largura da tela, sem cortar
+     os personagens nas laterais. O espaço que sobra embaixo é preenchido com a cor do balcão. */
+  @media (max-aspect-ratio: 1/1) {
+    body { background-color: #036b86; }
+    /* empurra o conteúdo para baixo dos rostos (personagens ocupam ~74% da altura da foto) */
+    body > .container { padding-top: calc(76vw + 1rem) !important; }
+    body::before, #splash {
+      background:
+        linear-gradient(var(--fundo-topo), var(--fundo-base)),
+        linear-gradient(rgba(3,107,134,0), #036b86) 0 calc(100vw - 90px) / 100% 90px no-repeat,
+        url('img/fundo.jpg') top center / 100% auto no-repeat,
+        #036b86;
+    }
+    #splash {
+      background:
+        linear-gradient(rgba(0,10,14,.15), rgba(0,10,14,.55)),
+        linear-gradient(rgba(3,107,134,0), #036b86) 0 calc(100vw - 90px) / 100% 90px no-repeat,
+        url('img/fundo.jpg') top center / 100% auto no-repeat,
+        #036b86;
+    }
+  }
+
   .topo { text-align: center; margin-bottom: 1.25rem; }
   .topo img { width: 84px; height: 84px; filter: drop-shadow(0 0 12px rgba(0,240,255,.55)); }
   .topo h1 { font-size: 1.6rem; margin: .25rem 0 0; text-shadow: 0 2px 10px rgba(0,0,0,.8); }
