@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Amigo X</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00121a">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Amigo X">
+<link rel="preload" as="image" href="img/fundo.jpg">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root { --ciano: #00f0ff; }
+  html, body { min-height: 100%; }
+  body { color: #fff; background: #00121a; }
+
+  /* Fundo padrão de todas as telas */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background:
+      linear-gradient(rgba(0,18,24,.60), rgba(0,18,24,.82)),
+      url('img/fundo.jpg') center / cover no-repeat;
+  }
+
+  .topo { text-align: center; margin-bottom: 1.25rem; }
+  .topo img { width: 84px; height: 84px; filter: drop-shadow(0 0 12px rgba(0,240,255,.55)); }
+  .topo h1 { font-size: 1.6rem; margin: .25rem 0 0; text-shadow: 0 2px 10px rgba(0,0,0,.8); }
+
+  .card {
+    background: rgba(6, 22, 28, .78);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(0,240,255,.25);
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.45);
+  }
+  .form-control, .form-control:focus {
+    background: rgba(255,255,255,.08); color: #fff; border-color: rgba(0,240,255,.35);
+  }
+  .form-control:focus { box-shadow: 0 0 0 .2rem rgba(0,240,255,.2); }
+  .form-control::placeholder { color: rgba(255,255,255,.45); }
+
+  .btn-ciano { background: #00d8e6; border-color: #00d8e6; color: #001a1f; font-weight: 600; }
+  .btn-ciano:hover, .btn-ciano:focus { background: #25f0fc; border-color: #25f0fc; color: #001a1f; }
+  .btn-ciano:disabled { opacity: .6; }
+  .nome-btn { text-align: left; }
+
+  .revelado {
+    text-align: center; padding: 1rem; border-radius: 12px;
+    background: rgba(0,240,255,.10); border: 1px solid rgba(0,240,255,.35);
+  }
+
+  /* Splash */
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background:
+      linear-gradient(rgba(0,10,14,.45), rgba(0,10,14,.80)),
+      url('img/fundo.jpg') center / cover no-repeat;
+    transition: opacity .55s ease;
+  }
+  #splash.sai { opacity: 0; pointer-events: none; }
+  #splash img {
+    width: min(52vw, 250px);
+    filter: drop-shadow(0 0 22px rgba(0,240,255,.7));
+    animation: pulsa 1.8s ease-in-out infinite;
+  }
+  #splash .titulo {
+    margin-top: 1rem; font-size: 1.9rem; font-weight: 700; letter-spacing: .05em;
+    text-shadow: 0 2px 12px rgba(0,0,0,.9);
+  }
+  @keyframes pulsa { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  @media (prefers-reduced-motion: reduce) { #splash img { animation: none; } }
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <img src="img/logo-leao.png" alt="">
+  <div class="titulo">Amigo X</div>
+</div>
+<script>
+  // Splash: aparece uma vez por sessão (a cada abertura do app instalado)
+  (function () {
+    var s = document.getElementById('splash');
+    var fechar = function () {
+      s.classList.add('sai');
+      setTimeout(function () { s.remove(); }, 650);
+    };
+    try {
+      if (sessionStorage.getItem('amigox_splash')) { s.remove(); return; }
+      sessionStorage.setItem('amigox_splash', '1');
+    } catch (e) {}
+    var inicio = Date.now();
+    window.addEventListener('load', function () {
+      setTimeout(fechar, Math.max(0, 1500 - (Date.now() - inicio)));
+    });
+    setTimeout(function () { if (document.getElementById('splash')) fechar(); }, 4500);
+  })();
+</script>
+
+<div class="container py-4" style="max-width: 560px;">
+  <div class="topo">
+    <img src="img/logo-leao.png" alt="Amigo X">
+    <h1>Amigo X</h1>
+  </div>
+  <div id="app"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ycnktfqvjpqbxfvxafrz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ayBkJ47zIKEHVxK0ta3RXQ_SHTadFNz';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $app = document.getElementById('app');
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const eventoId = () => new URLSearchParams(location.hash.slice(1)).get('e');
+const keyLogin = id => 'amigox_login_' + id;
+
+async function rpc(fn, args) {
+  const { data, error } = await sb.rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return data;
+}
+function alerta(msg, tipo = 'danger') {
+  return `<div class="alert alert-${tipo} py-2">${esc(msg)}</div>`;
+}
+
+/* ---------- Tela inicial: criar evento ---------- */
+function telaCriar(erro = '', nome = '', nomes = '') {
+  $app.innerHTML = `
+    <div class="card p-3">
+      <h2 class="h5">Criar sorteio</h2>
+      ${erro ? alerta(erro) : ''}
+      <label class="form-label mt-2">Nome do evento</label>
+      <input id="evNome" class="form-control" placeholder="Ex.: Amigo X da família 2026" value="${esc(nome)}">
+      <label class="form-label mt-3">Participantes (um nome por linha)</label>
+      <textarea id="evNomes" class="form-control" rows="8" placeholder="Maria&#10;João&#10;Ana">${esc(nomes)}</textarea>
+      <button id="btnCriar" class="btn btn-ciano mt-3 w-100">Criar e gerar link</button>
+    </div>`;
+  document.getElementById('btnCriar').onclick = async (e) => {
+    const nomeEv = document.getElementById('evNome').value.trim();
+    const textoNomes = document.getElementById('evNomes').value;
+    const lista = [...new Set(textoNomes.split('\n').map(n => n.trim()).filter(Boolean))];
+    if (!nomeEv) return telaCriar('Informe o nome do evento.', nomeEv, textoNomes);
+    if (lista.length < 3) return telaCriar('Informe pelo menos 3 participantes.', nomeEv, textoNomes);
+    e.target.disabled = true; e.target.textContent = 'Criando...';
+    try {
+      const id = await rpc('amigox_criar_evento', { p_nome: nomeEv, p_nomes: lista });
+      telaLink(id);
+    } catch (err) { telaCriar(err.message, nomeEv, textoNomes); }
+  };
+}
+
+function telaLink(id) {
+  const link = location.origin + location.pathname + '#e=' + id;
+  $app.innerHTML = `
+    <div class="card p-3">
+      <h2 class="h5">Sorteio criado! 🎉</h2>
+      <p class="mb-2">Envie este link para os participantes:</p>
+      <input id="linkEv" class="form-control" readonly value="${esc(link)}">
+      <button id="btnCopiar" class="btn btn-ciano mt-3 w-100">Copiar link</button>
+      <a class="btn btn-outline-info mt-2 w-100" href="${esc(link)}">Abrir o sorteio</a>
+      <p class="small text-muted mt-3 mb-0">Guarde o link: quem tiver acesso a ele pode participar.</p>
+    </div>`;
+  document.getElementById('btnCopiar').onclick = async () => {
+    try { await navigator.clipboard.writeText(link); }
+    catch { document.getElementById('linkEv').select(); document.execCommand('copy'); }
+    document.getElementById('btnCopiar').textContent = 'Link copiado ✓';
+  };
+}
+
+/* ---------- Evento: escolher nome ---------- */
+async function telaEvento(id, erro = '', semAuto = false) {
+  $app.innerHTML = '<p class="text-center text-light">Carregando...</p>';
+  let info;
+  try { info = await rpc('amigox_info_evento', { p_evento: id }); }
+  catch (err) { return ($app.innerHTML = alerta(err.message)); }
+  if (!info) {
+    $app.innerHTML = alerta('Evento não encontrado.') +
+      '<a href="#" class="btn btn-outline-info w-100" onclick="location.hash=\'\'; return false;">Criar novo sorteio</a>';
+    return;
+  }
+
+  // login salvo neste aparelho
+  if (!erro && !semAuto) {
+    try {
+      const salvo = JSON.parse(localStorage.getItem(keyLogin(id)) || 'null');
+      if (salvo && info.participantes.some(p => p.id === salvo.id)) {
+        return telaPainel(id, salvo.id, salvo.pin, info.nome);
+      }
+    } catch {}
+  }
+
+  const feitos = info.participantes.filter(p => p.sorteou).length;
+  $app.innerHTML = `
+    <div class="card p-3">
+      <h2 class="h5 mb-1">${esc(info.nome)}</h2>
+      <p class="text-muted small">${feitos} de ${info.participantes.length} já sortearam</p>
+      ${erro ? alerta(erro) : ''}
+      <p class="mb-2">Quem é você?</p>
+      <div class="d-grid gap-2" id="listaNomes">
+        ${info.participantes.map(p => `
+          <button class="btn btn-outline-info nome-btn" data-id="${p.id}" data-nome="${esc(p.nome)}">
+            ${esc(p.nome)} ${p.sorteou ? '<span class="float-end">✓</span>' : ''}
+          </button>`).join('')}
+      </div>
+    </div>`;
+  document.querySelectorAll('#listaNomes button').forEach(b => {
+    b.onclick = () => telaPin(id, b.dataset.id, b.dataset.nome, info.nome);
+  });
+}
+
+function telaPin(eid, pid, nome, nomeEvento, erro = '') {
+  $app.innerHTML = `
+    <div class="card p-3">
+      <h2 class="h5 mb-1">Olá, ${esc(nome)}!</h2>
+      <p class="text-muted small">Primeiro acesso? Crie um PIN (ex.: 4 números) e anote.
+        Se já entrou antes, digite o seu PIN.</p>
+      ${erro ? alerta(erro) : ''}
+      <input id="pin" type="password" inputmode="numeric" class="form-control" placeholder="Seu PIN" autofocus>
+      <button id="btnEntrar" class="btn btn-ciano mt-3 w-100">Entrar</button>
+      <button id="btnVoltar" class="btn btn-link w-100 mt-1">Voltar</button>
+    </div>`;
+  document.getElementById('btnVoltar').onclick = () => telaEvento(eid, '', true);
+  const entrar = () => {
+    const pin = document.getElementById('pin').value.trim();
+    if (!pin) return telaPin(eid, pid, nome, nomeEvento, 'Informe o PIN.');
+    telaPainel(eid, pid, pin, nomeEvento, nome);
+  };
+  document.getElementById('btnEntrar').onclick = entrar;
+  document.getElementById('pin').onkeydown = e => { if (e.key === 'Enter') entrar(); };
+}
+
+/* ---------- Painel do participante ---------- */
+async function telaPainel(eid, pid, pin, nomeEvento, nomeP = null) {
+  $app.innerHTML = '<p class="text-center text-light">Carregando...</p>';
+  let d;
+  try { d = await rpc('amigox_meu_painel', { p_id: pid, p_pin: pin }); }
+  catch (err) {
+    try { localStorage.removeItem(keyLogin(eid)); } catch {}
+    return nomeP ? telaPin(eid, pid, nomeP, nomeEvento, err.message)
+                 : telaEvento(eid, err.message, true);
+  }
+  try { localStorage.setItem(keyLogin(eid), JSON.stringify({ id: pid, pin })); } catch {}
+
+  const amigoHtml = d.amigo ? `
+    <div class="revelado">
+      <div class="small text-muted">Seu amigo X é</div>
+      <div class="display-6 fw-bold">${esc(d.amigo.nome)}</div>
+      <hr>
+      <div class="small text-muted">O presente que ele(a) quer:</div>
+      <div style="white-space:pre-wrap">${esc(d.amigo.desejo) || '<em class="text-muted">Ainda não informou. Volte mais tarde!</em>'}</div>
+      <button id="btnAtualizar" class="btn btn-sm btn-outline-info mt-3">Atualizar</button>
+    </div>` : `
+    <button id="btnSortear" class="btn btn-lg btn-ciano w-100">🎲 Sortear meu amigo X</button>
+    <p class="small text-muted mt-2 mb-0">O sorteio só pode ser feito uma vez.</p>`;
+
+  $app.innerHTML = `
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div><div class="small text-muted">${esc(nomeEvento)}</div><h2 class="h5 mb-0">${esc(d.nome)}</h2></div>
+        <button id="btnSair" class="btn btn-sm btn-outline-secondary">Sair</button>
+      </div>
+    </div>
+    <div class="card p-3 mb-3">
+      <h3 class="h6">🎁 O presente que eu quero</h3>
+      <textarea id="desejo" class="form-control" rows="3" maxlength="500"
+        placeholder="Ex.: camisa tamanho M, livro de ficção, chocolate...">${esc(d.desejo)}</textarea>
+      <div class="mt-2">
+        <button id="btnSalvar" class="btn btn-ciano">Salvar desejo</button>
+        <span id="msgSalvo" class="small ms-2"></span>
+      </div>
+    </div>
+    <div class="card p-3">${amigoHtml}</div>`;
+
+  document.getElementById('btnSair').onclick = () => {
+    try { localStorage.removeItem(keyLogin(eid)); } catch {}
+    telaEvento(eid, '', true);
+  };
+  document.getElementById('btnSalvar').onclick = async () => {
+    const msg = document.getElementById('msgSalvo');
+    try {
+      await rpc('amigox_salvar_desejo', { p_id: pid, p_pin: pin, p_desejo: document.getElementById('desejo').value });
+      msg.className = 'small ms-2 text-success'; msg.textContent = 'Salvo ✓';
+    } catch (err) { msg.className = 'small ms-2 text-danger'; msg.textContent = err.message; }
+  };
+  const bs = document.getElementById('btnSortear');
+  if (bs) bs.onclick = async () => {
+    if (!confirm('Sortear agora? Você só poderá sortear uma vez.')) return;
+    bs.disabled = true;
+    try { await rpc('amigox_sortear', { p_id: pid, p_pin: pin }); telaPainel(eid, pid, pin, nomeEvento); }
+    catch (err) { alert(err.message); bs.disabled = false; }
+  };
+  const ba = document.getElementById('btnAtualizar');
+  if (ba) ba.onclick = () => telaPainel(eid, pid, pin, nomeEvento);
+}
+
+/* ---------- Roteamento ---------- */
+function rota() {
+  const id = eventoId();
+  if (id) telaEvento(id); else telaCriar();
+}
+window.addEventListener('hashchange', rota);
+rota();
+
+/* ---------- PWA ---------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
