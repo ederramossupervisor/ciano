@@ -58,8 +58,13 @@
     background: rgba(0,240,255,.10); border: 1px solid rgba(0,240,255,.35);
   }
   .desejo-texto {
-    white-space: pre-wrap; padding: .6rem .8rem; border-radius: 10px;
+    white-space: pre-wrap; overflow-wrap: anywhere; padding: .6rem .8rem; border-radius: 10px;
     background: rgba(255,255,255,.07); border: 1px solid rgba(0,240,255,.2);
+  }
+  .desejo-texto a, .revelado a { color: #5ff6ff; text-decoration: underline; overflow-wrap: anywhere; }
+  .dica-link {
+    font-size: .85rem; padding: .45rem .65rem; border-radius: 8px; margin-bottom: .6rem;
+    background: rgba(0,240,255,.10); border: 1px dashed rgba(0,240,255,.4);
   }
 
   /* Splash */
@@ -136,6 +141,18 @@ async function rpc(fn, args) {
 }
 function alerta(msg, tipo = 'danger') {
   return `<div class="alert alert-${tipo} py-2">${esc(msg)}</div>`;
+}
+
+// Escapa o texto e transforma links (http, https, www) em links clicáveis
+function linkify(texto) {
+  return esc(texto).replace(/\b((?:https?:\/\/|www\.)[^\s<]+)/gi, (m) => {
+    let url = m.split(/&quot;|&#39;|&lt;|&gt;/)[0];
+    let resto = m.slice(url.length);
+    const fim = url.match(/[.,;:!?)\]]+$/);
+    if (fim) { url = url.slice(0, -fim[0].length); resto = fim[0] + resto; }
+    const href = /^www\./i.test(url) ? 'https://' + url : url;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow">${url}</a>${resto}`;
+  });
 }
 
 /* ---------- Tela inicial: criar evento ---------- */
@@ -264,7 +281,7 @@ async function telaPainel(eid, pid, pin, nomeEvento, nomeP = null) {
       <div class="display-6 fw-bold">${esc(d.amigo.nome)}</div>
       <hr>
       <div class="small text-muted">O presente que ele(a) quer:</div>
-      <div style="white-space:pre-wrap">${esc(d.amigo.desejo) || '<em class="text-muted">Ainda não informou. Volte mais tarde!</em>'}</div>
+      <div style="white-space:pre-wrap; overflow-wrap:anywhere">${d.amigo.desejo ? linkify(d.amigo.desejo) : '<em class="text-muted">Ainda não informou. Volte mais tarde!</em>'}</div>
       <button id="btnAtualizar" class="btn btn-sm btn-outline-info mt-3">Atualizar</button>
     </div>` : `
     <button id="btnSortear" class="btn btn-lg btn-ciano w-100">🎲 Sortear meu amigo X</button>
@@ -279,9 +296,10 @@ async function telaPainel(eid, pid, pin, nomeEvento, nomeP = null) {
     </div>
     <div class="card p-3 mb-3">
       <h3 class="h6">🎁 O presente que eu quero</h3>
+      <div class="dica-link">🔗 Você pode colar <strong>links</strong> de produtos (Amazon, Mercado Livre, Shopee...). Eles ficam clicáveis para o seu amigo X.</div>
 
       <div id="desejoView" class="${desejoAtual ? '' : 'd-none'}">
-        <div id="desejoTexto" class="desejo-texto">${esc(desejoAtual)}</div>
+        <div id="desejoTexto" class="desejo-texto">${linkify(desejoAtual)}</div>
         <div class="mt-2">
           <button id="btnAlterar" class="btn btn-sm btn-outline-info">✏️ Alterar</button>
           <span id="msgSalvo" class="small ms-2"></span>
@@ -289,8 +307,8 @@ async function telaPainel(eid, pid, pin, nomeEvento, nomeP = null) {
       </div>
 
       <div id="desejoEdit" class="${desejoAtual ? 'd-none' : ''}">
-        <textarea id="desejo" class="form-control" rows="3" maxlength="500"
-          placeholder="Ex.: camisa tamanho M, livro de ficção, chocolate...">${esc(desejoAtual)}</textarea>
+        <textarea id="desejo" class="form-control" rows="4" maxlength="1000"
+          placeholder="Ex.: camisa tamanho M&#10;https://www.loja.com/produto-que-eu-quero&#10;chocolate amargo">${esc(desejoAtual)}</textarea>
         <div class="mt-2">
           <button id="btnSalvar" class="btn btn-ciano">Salvar</button>
           <button id="btnCancelar" class="btn btn-link ${desejoAtual ? '' : 'd-none'}">Cancelar</button>
@@ -323,7 +341,7 @@ async function telaPainel(eid, pid, pin, nomeEvento, nomeP = null) {
       await rpc('amigox_salvar_desejo', { p_id: pid, p_pin: pin, p_desejo: novo });
       desejoAtual = novo;
       $('desejo').value = novo;
-      $('desejoTexto').textContent = novo;
+      $('desejoTexto').innerHTML = linkify(novo);
       mostrar(!novo);
       if (novo) {
         $('msgSalvo').className = 'small ms-2 text-success';
